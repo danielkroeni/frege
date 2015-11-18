@@ -420,13 +420,13 @@ pass = do
     g <- getSTT 
 
     let toMaybe = [
-            "final public static TMaybe _toMaybe(Object it) {",
+            "final public static TMaybe " ++ javaManglePrefix ++ "toMaybe(Object it) {",
             "   return it == null ? TMaybe.DNothing.it : TMaybe.DJust.mk(it);",
             "}",
             ]
     when (g.thisPack == pPreludeBase) (forM_ toMaybe U.println)
     let toList = [ 
-             "final public static<T> TList _toList(T[] arr) {",
+             "final public static<T> TList " ++ javaManglePrefix ++ "toList(T[] arr) {",
              "   if (arr == null) return PreludeBase.TList.DList.it;",
              "   int i = arr.length - 1;",
              "   TList it = TList.DList.it;",
@@ -438,7 +438,7 @@ pass = do
              "   }",
              "   return it;",
              "}",
-             "final public static TList _toList(Iterable<Object> iter) {",
+             "final public static TList " ++ javaManglePrefix ++ "toList(Iterable<Object> iter) {",
              "   return (new frege.runtime.Fun1<TList>() {",
              "       @Override public TList eval(Object arg) {",
              "           @SuppressWarnings(\"unchecked\")",
@@ -496,7 +496,7 @@ mainCode g sym
         "    " ++ g.unpack pPreludeBase ++ ".TST.performUnsafe(",
         "      " ++ show (extFname g sym) ++ ".inst.apply(" 
                     ++ g.unpack pPreludeBase 
-                    ++ "._toList(argv)).<frege.runtime.Lambda>forced()));",
+                    ++ "." ++ javaManglePrefix ++ "toList(argv)).<frege.runtime.Lambda>forced()));",
         "  final long t2 = java.lang.System.nanoTime();",
         "  frege.runtime.Runtime.stderr.get().println(",
         "    \"runtime \" + ((((t2 - t1) + 500000) / 1000000) / 1e3) + \" wallclock seconds.\");",
@@ -587,13 +587,13 @@ makeConstants = do
 --             let  apparg = JInvoke btoli.jex [avb.jex]
 --             bmain <- instSymDirect sym.pos sym mainSigma
 --             let applist = (JCast jtFun
---                             • JX.invoke [] • JX.xmem "_e"
+--                             • JX.invoke [] • JX.xmem (javaManglePrefix ++ "e")
 --                             • JX.invoke [apparg]) bmain.jex
 --                 iovoid = TApp (TApp (tc "ST") (tc "RealWorld")) (tc "()")
 --                 sig2 = ForAll [] (RhoFun [] (tauSig iovoid) (RhoTau [] (tc "()")))
 --             bperf <- instSymDirect sym.pos vstpu sig2
 --             let appio = {- JCast jtFun -} (JInvoke bperf.jex [applist])
---                 -- appe  = JInvoke (JExMem appio "_e") []
+--                 -- appe  = JInvoke (JExMem appio (javaManglePrefix ++ "e")) []
 --                 appe  = JInvoke (JStMem (JName "frege.RT" "fjMain") []) [appio]
 --                 gettime s = JMember {attr = attrFinal, jtype = Nativ "long" [], name=s,
 --                             init = Just (JInvoke
@@ -1700,7 +1700,7 @@ nativeCall g (sym@SymV {nativ = Just item}) abinds = newBind g bsig (call jrty a
                                  jtype = Lazy Something,            -- i.e. Object 
                                  jex   = m1ex}
                  m1ex = JExMem just "mem1" []
-                 just = JInvoke (JExMem sbind.jex "_Just" []) []
+                 just = JInvoke (JExMem sbind.jex (javaManglePrefix ++ "Just") []) []
         baserty r
              | Just (_, x) <- unST r       = baserty x
              | Just (_, x) <- U.isException g r = baserty x
@@ -1761,7 +1761,7 @@ wrapCode g jreturn rtau (sym@SymV {nativ = Just item, throwing}) abinds
             lambda  = jtFunc 1 ajt
             rMethod = JMethod {attr = attrs [JFinal, JPublic], gargs=[],
                                 jtype = autoboxed ajt, name = "eval",
-                                args = [(attrFinal, ssig, Something, "_state")],
+                                args = [(attrFinal, ssig, Something, javaManglePrefix ++ "state")],
                                 body = JBlock rbody}
         in [ret]
     | Just (exs, mtau) <- U.isException g rtau = let
@@ -1784,16 +1784,16 @@ wrapCode g jreturn rtau (sym@SymV {nativ = Just item, throwing}) abinds
             -- bind   = nativeCall g sym abinds
             mkmb   = {- case isPrimitive ajt of
                  Just prim ->
-                     JInvoke (JStMem (JName base ("_" ++ prim++ "ToMaybe")) []) [bind.jex]
+                     JInvoke (JStMem (JName base (javaManglePrefix ++ prim++ "ToMaybe")) []) [bind.jex]
                  Nothing   -> -}
-                     JInvoke (JStMem (JName base "_toMaybe") []) [bind.jex]
+                     JInvoke (JStMem (JName base (javaManglePrefix ++ "toMaybe")) []) [bind.jex]
          in [jreturn mkmb]
     -- | Just atau <- U.isList rtau = let
     --         ajt    = tauJT g atau
     --         -- bind   = nativeCall g sym abinds
     --         mklst  = case isPrimitive ajt of
     --              Just _  -> bind.jex
-    --              Nothing -> JInvoke (JStMem (JName base "_toList") []) [bind.jex]
+    --              Nothing -> JInvoke (JStMem (JName base (javaManglePrefix ++ "toList")) []) [bind.jex]
     --      in [jreturn mklst]
      | Just _ <- U.isUnit rtau = let
             -- bind   = nativeCall g sym abinds

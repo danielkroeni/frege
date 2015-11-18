@@ -411,9 +411,9 @@ patternRMode g p =
 {--
   * [usage] @conGetter qname@
   * [return] the name of the method that gets the variant
-  * [example] @conGetter (MName tname "Con")@ evaluates to @"_Con"@
+  * [example] @conGetter (MName tname "Con")@ evaluates to @"$Con"@
   -}
-conGetter (MName tname base) = "_" ++ mangled base
+conGetter (MName tname base) = javaManglePrefix ++ mangled base
 conGetter _ = error "conGetter: no member"
  
  
