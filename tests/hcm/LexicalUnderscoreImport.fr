@@ -1,0 +1,11 @@
+--- Support for identifiers starting with an underscore
+module tests.hcm.LexicalUnderscoreImport where
+
+import tests.hcm.LexicalUnderscore (_f, final, _final, ®)
+
+main :: IO ()
+main = do
+  putStrLn final
+  putStrLn _final
+  putStrLn $ _f True
+  putStrLn $ 1 ® 2
